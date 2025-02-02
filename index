@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juego de Escritura - Dark Mode</title>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.10.5/brython.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.10.5/brython_stdlib.js"></script>
+  <style>
+    /* Estilos generales */
+    body {
+      font-family: 'Crimson Pro', serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+      flex-direction: column;
+    }
+    .container {
+      background-color: #1e1e1e;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+    input[type="text"],
+    input[type="number"],
+    button {
+      font-family: 'Crimson Pro', serif;
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+    }
+    button {
+      background-color: #333;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #444;
+    }
+    .hidden {
+      display: none;
+    }
+    .feedback {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    /* Contador de palabras en la esquina superior derecha */
+    #word_counter {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: #333;
+      padding: 10px;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body onload="brython()">
+  <div class="container">
+    <h1>Juego de Escritura</h1>
+    
+    <div id="word_counter">
+      Palabras: <span id="contador">0</span>
+    </div>
+
+    <div id="inicio_form">
+      <label for="niveles">¿Cuántos niveles quieres?: </label>
+      <input type="number" id="niveles" min="1" value="1">
+      
+      <label for="inicio">¿Desde qué número de límite de palabras quieres comenzar?: </label>
+      <input type="number" id="inicio" min="1" value="1">
+      
+      <button id="comenzarBtn">Comenzar Juego</button>
+    </div>
+
+    <div id="game_area" class="hidden">
+      <h2 id="instrucciones"></h2>
+      <input type="text" id="respuesta_input" placeholder="Escribe aquí tu respuesta">
+      <button id="enviarBtn">Enviar Respuesta</button>
+      <div id="feedback" class="feedback"></div>
+    </div>
+
+    <div id="resultado_area" class="hidden">
+      <h2>Resultados</h2>
+      <pre id="resultado_text"></pre>
+      <button id="reiniciarBtn">Reiniciar Juego</button>
+    </div>
+  </div>
+
+  <script type="text/python">
+from browser import document
+
+def count_words(text):
+    """Cuenta las palabras en un texto."""
+    return len([word for word in text.strip().split() if word])
+
+niveles = 0
+inicio = 0
+current_level = 0
+final_level = 0
+respuestas = []
+total = 0
+
+def comenzar_juego(ev):
+    global niveles, inicio, current_level, final_level, respuestas, total
+    try:
+        niveles = int(document["niveles"].value)
+        if niveles <= 0:
+            raise ValueError
+    except:
+        niveles = 1
+    try:
+        inicio = int(document["inicio"].value)
+        if inicio <= 0:
+            raise ValueError
+    except:
+        inicio = 1
+    
+    current_level = inicio
+    final_level = inicio + niveles - 1
+    respuestas = []
+    total = 0
+    
+    document["inicio_form"].classList.add("hidden")
+    document["game_area"].classList.remove("hidden")
+    actualizar_instrucciones()
+    document["contador"].text = "0"
+
+def actualizar_instrucciones():
+    document["instrucciones"].text = f"Escribe exactamente {current_level} palabra{'s' if current_level > 1 else ''}:"
+    document["respuesta_input"].value = ""
+    document["feedback"].text = ""
+    document["respuesta_input"].focus()
+
+def enviar_respuesta(ev):
+    global current_level, total, respuestas
+    user_input = document["respuesta_input"].value.strip()
+    word_count = count_words(user_input)
+    if word_count == current_level:
+        respuestas.append(user_input)
+        total += word_count
+        document["feedback"].style.color = "lightgreen"
+        document["feedback"].text = "¡Correcto!"
+        current_level += 1
+        if current_level > final_level:
+            mostrar_resultados()
+        else:
+            actualizar_instrucciones()
+            document["contador"].text = "0"
+    else:
+        document["feedback"].style.color = "tomato"
+        document["feedback"].text = f"¡Incorrecto! Escribiste {word_count} palabra{'s' if word_count != 1 else ''} en vez de {current_level}. Inténtalo de nuevo."
+
+def mostrar_resultados():
+    result_text = "Tus respuestas fueron:\n"
+    for idx, respuesta in enumerate(respuestas, start=1):
+        result_text += f"Nivel {idx}: {respuesta}\n"
+    result_text += f"\nTotal de palabras ingresadas: {total}"
+    document["resultado_text"].text = result_text
+    document["game_area"].classList.add("hidden")
+    document["resultado_area"].classList.remove("hidden")
+
+def reiniciar_juego(ev):
+    document["resultado_area"].classList.add("hidden")
+    document["inicio_form"].classList.remove("hidden")
+
+def actualizar_contador(ev):
+    text = document["respuesta_input"].value
+    word_count = count_words(text)
+    document["contador"].text = str(word_count)
+
+document["comenzarBtn"].bind("click", comenzar_juego)
+document["enviarBtn"].bind("click", enviar_respuesta)
+document["reiniciarBtn"].bind("click", reiniciar_juego)
+document["respuesta_input"].bind("input", actualizar_contador)
+  </script>
+</body>
+</html>
